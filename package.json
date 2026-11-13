@@ -1,0 +1,11 @@
+{
+  "name": "color-rush",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser/chrome.e2e.mjs",
+    "serve": "node tools/static-server.mjs 8080"
+  }
+}
