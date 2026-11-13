@@ -494,7 +494,7 @@ export function createStore(deps) {
     } else if (info && info.final) {
       goHome(info.reason === 'not-found'
         ? 'Room not found. Check the code, and make sure the host has opened the room.'
-        : 'Could not connect. Your network may block direct connections (WebRTC without a relay server).');
+        : 'Could not connect. The direct connection could not be established (strict Wi-Fi or mobile network). Try both phones on the same Wi-Fi, or switch one off mobile data.');
       return;
     } else {
       guestConn = 'lost';

@@ -108,7 +108,7 @@ function setupLocal(m) {
 function setupHost(m) {
   return `<main class="screen">${header('Host an online game', true)}${noticeHtml(m)}
     <label class="field"><span>Your name</span><input data-field="name" maxlength="16" autocomplete="nickname" value="${esc(m.settings.name)}" placeholder="Your name"></label>
-    <p class="muted small">Both phones need internet. The connection is direct (WebRTC); on some mobile or company networks it may fail because there is no relay server.</p>
+    <p class="muted small">Both phones need internet. The connection is direct (WebRTC); on some mobile or company networks it may fail. If it does, try the same Wi-Fi on both phones.</p>
     ${btn('Create room', 'host-create', 'data-fields="name"', 'btn primary wide')}
   </main>`;
 }

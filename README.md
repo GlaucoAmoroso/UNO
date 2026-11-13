@@ -43,7 +43,7 @@ A winning +2/+4 ends the game immediately (the penalty is not applied).
 ## Honest limits
 
 * **WebRTC may not connect on some networks** (strict corporate Wi-Fi, some mobile carriers) because
-  there is no relay server of our own. Try Wi-Fi on both phones if it fails. This cannot be guaranteed.
+  there is no relay of our own. The app uses free public TURN relays as a fallback, but they can be slow or down. Try the same Wi-Fi on both phones if it fails.
 * The free PeerJS broker is a shared community service: it can be slow or down, and it is not meant for
   heavy use.
 * The host phone is the "server": if its page is closed or the phone sleeps, the game pauses. The app asks

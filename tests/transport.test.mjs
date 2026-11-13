@@ -72,11 +72,11 @@ test('a room that does not exist gives status closed (final), not an exception',
   assert.equal(env.net.peers.size, peersBefore);
 });
 
-test('initial connection times out after 15 s when the broker is unreachable', async () => {
+test('initial connection times out after 30 s when the broker is unreachable', async () => {
   const env = makeEnv();
   env.net.down = true;
   const guest = startGuest(env);
-  await env.clock.tick(14000);
+  await env.clock.tick(29000);
   assert.deepEqual(guest.statuses, []);
   await env.clock.tick(2000);
   assert.deepEqual(guest.statuses, ['closed:timeout']);
@@ -102,7 +102,7 @@ test('host: a busy id gives a clear error after ~80 s', async () => {
   const host = startHost(env);
   await env.clock.tick(70000);
   assert.equal(host.room.status().state, 'busy');
-  await env.clock.tick(15000);
+  await env.clock.tick(30000);
   assert.equal(host.room.status().state, 'failed');
   assert.match(host.room.status().message, /still holds this room/i);
   assert.equal(host.room.isReady(), false);

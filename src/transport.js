@@ -30,11 +30,22 @@ export const realTimers = {
   now: () => Date.now(),
 };
 
+// ICE servers. Passing a config REPLACES PeerJS's built-in list, so the PeerJS defaults
+// (Google STUN + the PeerJS TURN relays) are repeated here, plus a free public TURN as a
+// second chance for mobile carriers / strict Wi-Fi. Free public relays can be slow or down.
+export const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
+  { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' },
+];
+export const PEER_OPTIONS = { debug: 0, config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 4 } };
+
 export const DEFAULTS = {
   heartbeatMs: 4000,
   heartbeatTimeoutMs: 12000,
   guestRetryMs: 2500,
-  guestConnectTimeoutMs: 15000,
+  guestConnectTimeoutMs: 30000,
   hostBusyRetryMs: 2000,
   hostBusyMaxMs: 80000,
   hostBackoff: [1000, 2000, 4000, 8000, 10000],
@@ -162,7 +173,7 @@ export function connectToRoom({ Peer, code, timers = realTimers, ...opts }) {
 
   function createPeer() {
     if (left || finished) return;
-    const p = new Peer(undefined, { debug: 0 });
+    const p = new Peer(undefined, PEER_OPTIONS);
     peer = p;
     p.on('open', () => { if (peer === p) attempt(); });
     p.on('error', (err) => { if (peer === p) onPeerError(err); });
@@ -306,7 +317,7 @@ export function openRoom({ Peer, code, timers = realTimers, ...opts }) {
 
   function create() {
     if (closed) return;
-    const p = new Peer(roomId(code), { debug: 0 });
+    const p = new Peer(roomId(code), PEER_OPTIONS);
     peer = p;
     p.on('open', () => {
       if (peer !== p || closed) return;

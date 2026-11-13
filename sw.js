@@ -3,7 +3,7 @@
 // so online mode always uses the real network.
 //
 // >>> BUMP CACHE_VERSION ON EVERY DELIVERY <<<  (a new name = a fresh cache for everybody)
-const CACHE_VERSION = 'colorrush-2026-11-13-v1';
+const CACHE_VERSION = 'colorrush-2026-11-13-v2';
 
 const PRECACHE = [
   './',
