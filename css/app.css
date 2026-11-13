@@ -117,12 +117,21 @@ h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color:
 .status.mine { color: var(--yellow); }
 .dir { text-align: center; font-size: 1.6rem; opacity: .85; }
 .banner { background: var(--warn); color: var(--warn-text); font-weight: 700; padding: 8px 14px; margin: 6px 12px 0; border-radius: 12px; text-align: center; font-size: .92rem; }
-.opps { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 12px 0; }
-.opp { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .15); font-weight: 700; max-width: 100%; }
+/* opponents: name + count on top, a fan of card backs below */
+.opps { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding: 10px 12px 0; }
+.opp { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 12px 8px; border-radius: 18px; background: rgba(255, 255, 255, .13); font-weight: 700; max-width: 100%; transition: background .3s, color .3s, box-shadow .3s, transform .3s; }
+.ohead { display: flex; align-items: center; gap: 8px; }
 .opp .oname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28vw; }
-.opp .ocount { min-width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .35); font-size: .9rem; }
-.opp.turn { background: #fff; color: #1d1b20; box-shadow: 0 0 0 3px var(--yellow); }
+.opp .ocount { min-width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .35); font-size: .85rem; transition: background .3s; }
+.opp.turn { background: #fff; color: #1d1b20; box-shadow: 0 0 0 3px var(--yellow), 0 0 18px rgba(255, 213, 0, .55); transform: translateY(2px) scale(1.04); }
 .opp.turn .ocount { background: #1d1b20; color: #fff; }
+.backs { --bw: 22px; --bh: 33px; --bstep: min(11px, calc((min(44vw, 220px) - var(--bw)) / var(--d))); position: relative; display: block; height: calc(var(--bh) + 6px); width: calc(var(--bw) + var(--bstep) * var(--d)); perspective: 300px; }
+.back {
+  position: absolute; left: calc(var(--i) * var(--bstep)); bottom: 0; width: var(--bw); height: var(--bh); border-radius: 5px; border: 2px solid #fff;
+  background: repeating-linear-gradient(45deg, #c8102e 0 4px, #8f0b21 4px 8px); box-shadow: 0 2px 4px rgba(0, 0, 0, .4);
+  transform: rotate(calc((var(--i) - var(--d) / 2) * 2.2deg)) rotateX(10deg); transform-origin: 50% 120%;
+}
+
 .bubble { position: absolute; top: -26px; right: 4px; font-size: 1.8rem; animation: pop .35s ease-out; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .4)); }
 .bubble.me { top: -34px; right: 18px; }
 @keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -151,7 +160,7 @@ h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color:
   position: relative; flex: 0 0 auto; width: var(--cw); height: var(--ch); padding: 0; border-radius: 10px;
   border: 3px solid #fff; color: #fff; font: 800 1.9rem/1 system-ui, sans-serif; display: grid; place-items: center;
   box-shadow: 0 2px 6px rgba(0, 0, 0, .4); cursor: pointer; user-select: none; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform .28s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease, filter .25s ease;
 }
 .card.big { --cw: 92px; --ch: 138px; font-size: 2.6rem; cursor: default; }
 .card .corner { position: absolute; top: 4px; left: 6px; font-size: .78rem; }
@@ -162,15 +171,32 @@ h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color:
 .c-green { background: var(--green); }
 .c-blue { background: var(--blue); }
 .c-wild { background: conic-gradient(var(--red) 0 25%, var(--blue) 0 50%, var(--green) 0 75%, var(--yellow) 0); }
-.hand-wrap { position: relative; }
-.hand { display: flex; align-items: flex-end; overflow-x: auto; padding: 26px 16px 12px; min-height: 140px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.hand::-webkit-scrollbar { display: none; }
-.hand .card + .card { margin-left: -22px; }
+/* hand: a 3D fan. Order never changes; selecting only highlights a card (small lift + glow). */
+.hand-wrap { position: relative; container-type: inline-size; overflow: hidden; }
+.hand {
+  --cw: 66px; --ch: 99px;
+  position: relative; height: calc(var(--ch) + 76px); perspective: 900px; perspective-origin: 50% 130%;
+  --step: min(48px, calc((100cqw - var(--cw) - 64px) / var(--d)));
+  --ang: min(4.2deg, calc(64deg / var(--d)));
+  --k: min(1.7px, calc(120px / (var(--d) * var(--d))));
+}
+.hand .card {
+  --o: calc(var(--i) - (var(--n) - 1) / 2);
+  --lift: 0px;
+  position: absolute; left: 50%; bottom: 30px; margin-left: calc(var(--cw) / -2);
+  transform-origin: 50% 100%;
+  transform: translateX(calc(var(--o) * var(--step))) translateY(calc(var(--o) * var(--o) * var(--k) + var(--lift))) rotate(calc(var(--o) * var(--ang))) rotateY(calc(var(--o) * -1.6deg)) rotateX(6deg);
+  box-shadow: -2px 3px 8px rgba(0, 0, 0, .45);
+  background-image: linear-gradient(115deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, .14));
+}
 .hand .card:disabled { cursor: default; }
-.card.playable { transform: translateY(-10px); box-shadow: 0 0 0 3px rgba(255, 255, 255, .95), 0 8px 16px rgba(0, 0, 0, .45); z-index: 1; }
+.hand .card.playable { box-shadow: 0 0 0 3px rgba(255, 255, 255, .95), 0 0 16px 4px rgba(255, 255, 255, .55); --lift: -4px; }
 .card.dim { filter: saturate(.65) brightness(.86); }
-.card.partner { outline: 3px dashed #fff; outline-offset: 2px; transform: translateY(-10px); }
-.card.sel { transform: translateY(-26px); box-shadow: 0 0 0 4px var(--yellow), 0 10px 18px rgba(0, 0, 0, .5); z-index: 2; }
+.hand .card.partner { outline: 3px dashed #fff; outline-offset: 2px; --lift: -4px; }
+.hand .card.sel { --lift: -14px; box-shadow: 0 0 0 4px var(--yellow), 0 0 22px 6px rgba(255, 213, 0, .75); }
+.hand .card.sel::after { content: '✓'; position: absolute; top: -13px; left: -9px; width: 24px; height: 24px; border-radius: 50%; background: var(--yellow); color: #2b2100; font: 800 .95rem/24px system-ui; text-align: center; text-shadow: none; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); animation: pop .25s ease-out; }
+.hand .card:active:not(:disabled) { --lift: -8px; }
+
 .actions { display: flex; gap: 10px; justify-content: center; padding: 4px 12px 8px; min-height: 56px; }
 .actions .btn { min-width: 96px; }
 .actions .btn:not(.primary) { background: rgba(255, 255, 255, .18); color: #fff; border-color: transparent; }
@@ -195,9 +221,47 @@ h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color:
 
 @media (max-height: 640px) {
   .pile, .card.big { --cw: 74px; --ch: 111px; width: 74px; height: 111px; }
-  .hand { min-height: 118px; padding-top: 20px; }
-  .card { --cw: 58px; --ch: 87px; font-size: 1.6rem; }
+  .card, .hand { --cw: 58px; --ch: 87px; }
+  .card { font-size: 1.6rem; }
 }
+/* ---------- animations (all classes below are added by app.js after a repaint) ---------- */
+.card.big { transform: rotate(var(--tilt, 0deg)); }
+.discard .card.big.enter.from-me { animation: land-me .5s cubic-bezier(.2, .8, .2, 1) backwards; }
+.discard .card.big.enter.from-opp { animation: land-opp .5s cubic-bezier(.2, .8, .2, 1) backwards; }
+@keyframes land-me { from { transform: translateY(230px) rotate(-24deg) scale(.7); opacity: .3; } 60% { transform: translateY(-6px) rotate(calc(var(--tilt) + 3deg)) scale(1.06); } }
+@keyframes land-opp { from { transform: translateY(-230px) rotate(22deg) scale(.7); opacity: .3; } 60% { transform: translateY(6px) rotate(calc(var(--tilt) - 3deg)) scale(1.06); } }
+.hand .card.enter { animation: deal .55s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: var(--delay, 0ms); }
+@keyframes deal { from { transform: translateY(-320px) scale(.45) rotate(-40deg); opacity: 0; } }
+.back.enter { animation: deal-back .45s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: var(--delay, 0ms); }
+@keyframes deal-back { from { transform: translateY(70px) scale(.5) rotate(30deg); opacity: 0; } }
+.bump { animation: bump .4s ease-out; }
+.lastmove.bump { animation: fade-in .4s ease-out; }
+@keyframes bump { 40% { transform: scale(1.35); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } }
+.penalty.enter { animation: pop-x .35s ease-out, pulse 1.2s ease-in-out .35s infinite; }
+@keyframes pop-x { from { transform: translateX(-50%) scale(.3); opacity: 0; } }
+.status.mine { animation: status-glow 1.6s ease-in-out infinite; }
+@keyframes status-glow { 50% { text-shadow: 0 0 12px rgba(255, 213, 0, .9); } }
+.pile:not(:disabled) { animation: pile-glow 1.8s ease-in-out infinite; }
+@keyframes pile-glow { 50% { box-shadow: 0 0 0 7px rgba(255, 213, 0, .55), 0 4px 12px rgba(0, 0, 0, .4); } }
+.pile:active:not(:disabled) { transform: scale(.96); animation: none; }
+.active { transition: background-color .35s, transform .35s; }
+.dir { transition: transform .4s; display: inline-block; }
+.dir.bump { animation: spin-dir .5s ease-out; }
+@keyframes spin-dir { from { transform: rotate(180deg) scale(1.3); } }
+.screen, .game { animation: screen-in .3s ease-out; }
+@keyframes screen-in { from { opacity: 0; transform: translateY(8px); } }
+.overlay { animation: fade-bg .25s ease-out; }
+@keyframes fade-bg { from { opacity: 0; } }
+.sheet { animation: sheet-up .35s cubic-bezier(.2, .8, .2, 1); }
+@keyframes sheet-up { from { transform: translateY(60px); opacity: 0; } }
+.trophy { display: inline-block; animation: trophy 1.2s ease-out .2s both; }
+@keyframes trophy { 0% { transform: scale(0) rotate(-30deg); } 55% { transform: scale(1.3) rotate(10deg); } 100% { transform: scale(1) rotate(0); } }
+.toast { animation: toast-in .25s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+.btn, .toggle, .chip, .emoji, .swatch { transition: transform .12s ease, background-color .2s, box-shadow .2s; }
+.btn:active:not(:disabled), .emoji:active, .swatch:active, .chip:active { transform: scale(.94); }
+.emoji:active { transform: scale(1.25); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

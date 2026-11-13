@@ -34,23 +34,101 @@ function schedulePaint() {
   paintQueued = true;
   Promise.resolve().then(() => { paintQueued = false; paint(); });
 }
+// Classes that only exist while an animation runs; a repaint must not strip them early.
+const TRANSIENT = ['enter', 'bump'];
+
+function syncAttrs(from, to) {
+  for (const a of [...from.attributes]) if (!to.hasAttribute(a.name)) from.removeAttribute(a.name);
+  for (const a of [...to.attributes]) {
+    if (a.name === 'class') {
+      const keep = TRANSIENT.filter((c) => from.classList.contains(c));
+      if (from.className !== a.value) from.className = a.value;
+      keep.forEach((c) => from.classList.add(c));
+    } else if (from.getAttribute(a.name) !== a.value) from.setAttribute(a.name, a.value);
+  }
+}
+
+// Small keyed DOM morph: existing elements are updated in place (so CSS transitions run),
+// new keyed elements are inserted and flagged "enter" (so their entrance animation runs).
+function morphChildren(oldP, newP, inserted) {
+  const keyedOld = new Map();
+  const plainOld = [];
+  for (const n of oldP.childNodes) {
+    if (n.nodeType === 1 && n.dataset.key) keyedOld.set(n.dataset.key, n); else plainOld.push(n);
+  }
+  const result = [];
+  for (const n of [...newP.childNodes]) {
+    if (n.nodeType === 1 && n.dataset.key) {
+      const ex = keyedOld.get(n.dataset.key);
+      if (ex && ex.tagName === n.tagName) { keyedOld.delete(n.dataset.key); morphNode(ex, n, inserted); result.push(ex); }
+      else { inserted.push(n); result.push(n); }
+      continue;
+    }
+    const ex = plainOld.shift();
+    if (ex && ex.nodeType === n.nodeType && (n.nodeType === 3 || ex.tagName === n.tagName)) { morphNode(ex, n, inserted); result.push(ex); }
+    else { if (n.nodeType === 1) inserted.push(n); result.push(n); }
+  }
+  result.forEach((n, i) => { if (oldP.childNodes[i] !== n) oldP.insertBefore(n, oldP.childNodes[i] || null); });
+  while (oldP.childNodes.length > result.length) oldP.removeChild(oldP.lastChild);
+}
+function morphNode(a, b, inserted) {
+  if (a.nodeType === 3) {
+    if (a.nodeValue !== b.nodeValue) {
+      a.nodeValue = b.nodeValue;
+      const p = a.parentElement;
+      if (p && p.dataset.pop) { p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
+    }
+    return;
+  }
+  syncAttrs(a, b);
+  if (a.matches('input, textarea')) return; // never touch what the user is typing
+  morphChildren(a, b, inserted);
+}
+function markEntering(nodes, root0) {
+  const stagger = new Map();
+  for (const n of nodes) {
+    if (n.nodeType !== 1) continue;
+    const targets = n.matches('.card, .back, .penalty') ? [n] : [...n.querySelectorAll('.hand .card, .back, .penalty')];
+    for (const t of targets) {
+      const kind = t.matches('.hand .card') ? 'hand' : t.matches('.back') ? t.parentElement : 'other';
+      const idx = stagger.get(kind) || 0; stagger.set(kind, idx + 1);
+      t.style.setProperty('--delay', `${Math.min(idx * 55, 500)}ms`);
+      t.classList.add('enter');
+    }
+    if (n.matches('.card.big')) n.classList.add('enter');
+  }
+  void root0;
+}
+root.addEventListener('animationend', (e) => {
+  const t = e.target;
+  if (t.classList) { t.classList.remove('enter'); if (e.animationName !== 'pulse') t.classList.remove('bump'); t.style.removeProperty('--delay'); }
+});
+
 function paint() {
   const m = store.getModel();
   const typed = {};
   root.querySelectorAll('[data-field]').forEach((el) => { typed[el.dataset.field] = el.value; });
   const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.field : null;
-  const hand = root.querySelector('.hand');
-  const scroll = hand ? hand.scrollLeft : 0;
 
-  root.innerHTML = render(m);
-
-  root.querySelectorAll('[data-field]').forEach((el) => {
-    const v = typed[el.dataset.field];
-    if (v !== undefined && v !== '') el.value = v;
-  });
-  if (focused) { const el = root.querySelector(`[data-field="${focused}"]`); if (el) el.focus(); }
-  const newHand = root.querySelector('.hand');
-  if (newHand) newHand.scrollLeft = scroll;
+  const html = render(m);
+  const oldGame = root.querySelector('main.game');
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const newGame = tpl.content.querySelector('main.game');
+  if (oldGame && newGame && root.children.length === 1 && tpl.content.children.length === 1) {
+    // same screen: patch in place so transitions and entrance animations can play
+    const inserted = [];
+    morphNode(oldGame, newGame, inserted);
+    markEntering(inserted, root);
+  } else {
+    root.innerHTML = html;
+    if (root.querySelector('main.game')) markEntering([...root.querySelectorAll('.hand .card, .back, .penalty')], root); // fresh game screen: deal everything
+    root.querySelectorAll('[data-field]').forEach((el) => {
+      const v = typed[el.dataset.field];
+      if (v !== undefined && v !== '') el.value = v;
+    });
+    if (focused) { const el = root.querySelector(`[data-field="${focused}"]`); if (el) el.focus(); }
+  }
 
   document.documentElement.dataset.theme = m.settings.theme === 'auto' ? '' : m.settings.theme;
   syncWakeLock(m);

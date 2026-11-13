@@ -35,17 +35,28 @@ function cardFace(c) {
   const t = esc(faceText(c));
   return `<span class="corner">${t}</span><span class="face">${t}</span><span class="corner br">${t}</span>`;
 }
-function handCard(c, m) {
+function handCard(c, m, idx) {
   const playable = m.playable.includes(c.id);
   const classes = ['card', colorClass(c)];
   if (playable) classes.push('playable');
   else if (m.myTurn) classes.push('dim');
   if (m.selection.includes(c.id)) classes.push('sel');
   else if (m.partners.includes(c.id)) classes.push('partner');
-  return `<button type="button" class="${classes.join(' ')}" data-act="card" data-id="${c.id}" data-playable="${playable ? 1 : 0}"` +
+  return `<button type="button" class="${classes.join(' ')}" data-act="card" data-key="c${c.id}" style="--i:${idx}" data-id="${c.id}" data-playable="${playable ? 1 : 0}"` +
     `${m.myTurn ? '' : ' disabled'} aria-label="${esc(cardName(c))}">${cardFace(c)}</button>`;
 }
-const staticCard = (c, extra = '') => `<div class="card big ${colorClass(c)} ${extra}" role="img" aria-label="${esc(cardName(c))}">${cardFace(c)}</div>`;
+// A small stable "random" tilt per card so the discard pile looks hand-thrown.
+const tiltOf = (id) => ((Number(id) * 37) % 11) - 5;
+const staticCard = (c, extra = '') => `<div class="card big ${colorClass(c)} ${extra}" data-key="top${c.id}" style="--tilt:${tiltOf(c.id)}deg" role="img" aria-label="${esc(cardName(c))}">${cardFace(c)}</div>`;
+
+// Face-down cards of an opponent: one back per card (capped) so you can see how many they hold.
+const MAX_BACKS = 14;
+function backsHtml(count) {
+  const n = Math.min(count, MAX_BACKS);
+  let out = '';
+  for (let k = 0; k < n; k++) out += `<i class="back" data-key="b${k}" style="--i:${k}"></i>`;
+  return `<span class="backs" style="--n:${n};--d:${Math.max(n - 1, 1)}" aria-hidden="true">${out}</span>`;
+}
 
 // ---------- small pieces ----------
 
@@ -175,10 +186,10 @@ function game(m) {
   const status = m.over ? 'Game over' : (m.myTurn ? 'Your turn' : `${esc(cur.name)}'s turn`);
   const opponents = v.players.filter((p) => p.id !== me).map((p) => {
     const bubble = m.emoji && m.emoji.seat === p.id ? `<span class="bubble">${esc(m.emoji.e)}</span>` : '';
-    return `<div class="opp${p.id === v.current && !m.over ? ' turn' : ''}"><span class="oname">${esc(p.name)}</span><span class="ocount" aria-label="${p.handCount} cards">${p.handCount}</span>${bubble}</div>`;
+    return `<div class="opp${p.id === v.current && !m.over ? ' turn' : ''}" data-key="o${p.id}"><div class="ohead"><span class="oname">${esc(p.name)}</span><span class="ocount" data-pop="1" aria-label="${p.handCount} cards">${p.handCount}</span></div>${backsHtml(p.handCount)}${bubble}</div>`;
   }).join('');
   const top = v.discardPile[0];
-  const penalty = v.penalty.amount > 0 ? `<div class="penalty" aria-label="Penalty">+${v.penalty.amount}</div>` : '';
+  const penalty = v.penalty.amount > 0 ? `<div class="penalty" data-key="penalty" aria-label="Penalty">+${v.penalty.amount}</div>` : '';
   const canDraw = m.myTurn && v.phase !== 'DREW';
   const drawLabel = v.penalty.amount > 0 ? `Draw ${v.penalty.amount}` : 'Draw';
   const hand = me !== null && v.players[me].hand ? v.players[me].hand : [];
@@ -192,17 +203,17 @@ function game(m) {
   const emojiBar = m.mode === 'host' || m.mode === 'guest'
     ? `<div class="emojis">${m.emojis.map((e) => `<button type="button" class="emoji" data-act="emoji" data-e="${esc(e)}" aria-label="Send ${esc(e)}">${esc(e)}</button>`).join('')}</div>` : '';
   return `<main class="game${m.blocked ? ' blocked' : ''}">
-    <header class="topbar">${btn('☰', 'menu', 'aria-label="Menu"', 'btn icon')}<div class="status${m.myTurn ? ' mine' : ''}">${status}</div><div class="dir" title="Direction">${v.direction === 1 ? '↻' : '↺'}</div></header>
+    <header class="topbar">${btn('☰', 'menu', 'aria-label="Menu"', 'btn icon')}<div class="status${m.myTurn ? ' mine' : ''}" data-pop="1">${status}</div><div class="dir" data-pop="1" title="Direction">${v.direction === 1 ? '↻' : '↺'}</div></header>
     ${bannerHtml(m)}
     <section class="opps">${opponents}</section>
     <section class="table">
       ${btn(`<span class="pile-label">${esc(drawLabel)}</span><small>${v.drawCount} left</small>`, 'draw', `${canDraw ? '' : 'disabled'}`, 'pile draw')}
-      <div class="discard">${staticCard(top, 'top')}<span class="active c-${esc(v.activeColor)}" aria-label="Active color ${esc(COLOR_NAME[v.activeColor])}"></span></div>
+      <div class="discard">${staticCard(top, 'top ' + (v.lastMove && v.lastMove.by === me ? 'from-me' : 'from-opp'))}<span class="active c-${esc(v.activeColor)}" aria-label="Active color ${esc(COLOR_NAME[v.activeColor])}"></span></div>
       ${penalty}
     </section>
-    <p class="lastmove">${lastMoveText(v, me)}</p>
+    <p class="lastmove" data-pop="1">${lastMoveText(v, me)}</p>
     ${toastHtml(m)}
-    <section class="hand-wrap">${myBubble}<div class="hand" aria-label="Your hand">${hand.map((c) => handCard(c, m)).join('')}</div></section>
+    <section class="hand-wrap">${myBubble}<div class="hand" style="--n:${hand.length};--d:${Math.max(hand.length - 1, 1)}" aria-label="Your hand">${hand.map((c, i) => handCard(c, m, i)).join('')}</div></section>
     <footer class="actions">${actions}</footer>
     ${emojiBar}
     ${m.pickColor ? colorPicker() : ''}

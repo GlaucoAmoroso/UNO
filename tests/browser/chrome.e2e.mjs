@@ -41,7 +41,7 @@ function watch(page, name) {
   page.on('pageerror', (e) => problems.push(`[${name}] pageerror: ${e.message}`));
   page.on('requestfailed', (r) => problems.push(`[${name}] request failed: ${r.url()} ${r.failure() && r.failure().errorText}`));
 }
-const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${name}.png`) }); };
+const shot = async (page, name) => { if (SHOTS) { await page.waitForTimeout(1300); await page.screenshot({ path: path.join(SHOTS, `${name}.png`) }); } };
 
 // ---------- a "finger": decisions are made only from what the page shows ----------
 const snapshot = (page) => page.evaluate(() => ({
@@ -50,7 +50,8 @@ const snapshot = (page) => page.evaluate(() => ({
     act: el.dataset.act, disabled: !!el.disabled, id: el.dataset.id, color: el.dataset.color, playable: el.dataset.playable, cls: el.className, label: el.textContent.trim(),
   })),
 }));
-const sel = (c) => (c.act === 'card' ? `[data-act="card"][data-id="${c.id}"]` : c.act === 'color' ? `[data-act="color"][data-color="${c.color}"]` : `[data-act="${c.act}"]`);
+// Cards overlap in the fan, so (like a thumb) the test taps the always-visible index corner of a card.
+const sel = (c) => (c.act === 'card' ? `[data-act="card"][data-id="${c.id}"] .corner:first-child` : c.act === 'color' ? `[data-act="color"][data-color="${c.color}"]` : `[data-act="${c.act}"]`);
 
 function decide(controls, rng) {
   const pick = (a) => a[Math.floor(rng.next() * a.length)];
